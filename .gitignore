@@ -1,0 +1,7 @@
+.ipynb_checkpoints/
+checkpoint
+dataset/
+hdd_keras_weights*
+hhd_simple_model/
+my_fashion_mnist_model.png
+word_demo.py
