@@ -21,7 +21,7 @@ def draw_circle(event,x,y,flags,param):
             if mode == True:
                 cv2.circle(img,(x,y),10,(0),-1)
             else:
-                cv2.rectangle(img,(ix,iy),(x,y),(0),-1)
+                cv2.circle(img,(x,y),10,(255),-1)
 
 
     elif event == cv2.EVENT_LBUTTONUP:
@@ -29,7 +29,7 @@ def draw_circle(event,x,y,flags,param):
         if mode == True:
             cv2.circle(img,(x,y),10,(0),-1)
         else:
-            cv2.rectangle(img,(ix,iy),(x,y),(0),-1)
+            cv2.circle(img,(x,y),10,(255),-1)
 
 def prepare_pic(img):
     img = cv2.resize(img,dsize=(50,50))
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     while(1):
         cv2.imshow('image',img)
         k = cv2.waitKey(1) & 0xFF
-        if k == ord('m'):
+        if k == ord('r'):
             mode = not mode
         elif k == ord('b'):
             img = clean_canvas()
