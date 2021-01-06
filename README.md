@@ -20,3 +20,18 @@ In the demo you will need to write a letter from the hebrew handwriting alphabet
 
 
 ![](doc/demo.gif)
+
+## Installation
+Install using Anaconda:
+
+```
+conda env create -f environment.yml
+conda activate hhd
+python3 painting_demo.py # or writing_game.py
+```
+
+Install using pip
+```
+pip3 install -r rquirements.txt
+python3 painting_demo.py # or writing_game.py
+```
