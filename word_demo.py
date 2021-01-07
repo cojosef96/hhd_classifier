@@ -3,13 +3,17 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 import itertools
+from math import floor
 
 THIN_THRESHOLD = 70  # threshold for the size of the boundinboxes that detected
 FRAME_SIZE = 20  # adding white frame with size 20
 drawing = False  # true if mouse is pressed
 mode = True  # if True, draw rectangle. Press 'm' to toggle to curve
-ix, iy = -1, -1
-IOU_THRESHOLD = 0.03
+CANVAS_HEIGHT = 400  # the height of the canvas
+CANVAS_WIDTH = 1000  # the width of the canvas
+
+ix, iy = -1, -1  # start value of x,y
+IOU_THRESHOLD = 0.03  # IOU threshold for combining images
 
 
 # mouse callback function
@@ -26,7 +30,6 @@ def draw_circle(event, x, y, flags, param):
                 cv2.circle(img, (x, y), 10, 0, -1)
             else:
                 cv2.circle(img, (x, y), 10, 255, -1)
-
 
     elif event == cv2.EVENT_LBUTTONUP:
         drawing = False
@@ -90,7 +93,7 @@ def calssify_letter(img):
 
 
 def clean_canvas():
-    return np.ones((400, 1000, 1), np.uint8) * 255
+    return np.ones((CANVAS_HEIGHT, CANVAS_WIDTH, 1), np.uint8) * 255
 
 
 def relu(y):
@@ -108,24 +111,30 @@ def get_overlap_bb(bb1, bb2):
     return [x1, y1, x2, y2]
 
 
-def get_letters_from_words(img):
-    contours, hierarchy = cv2.findContours(cv2.bitwise_not(img), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    word_img = []
-    roi_list = []
-    bb_list = []
+def white_squared_frame(img):
+    h, w, c = img.shape
+    size = max(CANVAS_HEIGHT, h, w)
+    frame = np.ones((size, size, c), np.uint8) * 255
+    h_new = floor((size - h) / 2)
+    w_new = floor((size - w) / 2)
+    frame[h_new:h_new + h, w_new:w_new + w] = img
+    return frame
+
+
+def filter_boxes(bb_list):
+    """
+    iterate over the boxes combinations to see if there is overlap between them,
+     if there is an overlap between 2 bounding boxes. another bounding box that fit both boxes will be created,
+      and will be added to the bb_list. The 2 bounding boxes will be removed from the list.
+      the list will be sorted and returned.
+    :param bb_list: list of bounding boxes.
+    :return: bb_list
+    """
     bad_idx = []
-    for cnt in contours:
-        x, y, w, h = cv2.boundingRect(cnt)
-        bb = [x, y, x + w, y + h]
-        if h > THIN_THRESHOLD or w > THIN_THRESHOLD:
-            bb_list.append(bb)
-            # roi = img[relu(y):y + h + FRAME_SIZE, relu(x):x + w + FRAME_SIZE]
-            # # word_img.append(calssify_letter(roi))
-            # roi_list.append(cv2.resize(roi, (50, 50)))
     combinations = list(itertools.combinations(range(len(bb_list)), 2))
     for idx1, idx2 in combinations:
         iou = bb_intersection_over_union(bb_list[idx1], bb_list[idx2])
-        print("the iou is {} and the index are ({},{})".format(iou, idx1, idx2))
+        # print("the iou is {} and the index are ({},{})".format(iou, idx1, idx2))
         if iou > IOU_THRESHOLD:
             new_bb = get_overlap_bb(bb_list[idx1], bb_list[idx2])
             bad_idx.append(idx1)
@@ -135,21 +144,41 @@ def get_letters_from_words(img):
     good_idx = list(set(range(len(bb_list))) - set(bad_idx))
     bb_list = list(bb_list[good_idx])
     bb_list.sort(key=lambda box: box[0])
-    for bb in bb_list:
+    return bb_list
+
+
+def get_letters_from_words(img):
+    # get letters polygons from image
+    contours, hierarchy = cv2.findContours(cv2.bitwise_not(img), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    word_img = []  # word list
+    roi_list = []  # input word list
+    bb_list = []  # bounding box list
+
+    for cnt in contours:
+        x, y, w, h = cv2.boundingRect(cnt)
+        bb = [x, y, x + w, y + h]
+        if h > THIN_THRESHOLD or w > THIN_THRESHOLD:
+            # check if the bounding box is big enough for a letter (clean false detections)
+            bb_list.append(bb)  # add the bounding box to the list
+
+    bb_list = filter_boxes(bb_list)  # filter the bad boxes
+
+    for bb in bb_list:  # iterate over the list of bounding boxes.
         x, y, x2, y2 = bb
         roi = img[relu(y):y2 + FRAME_SIZE, relu(x):x2 + FRAME_SIZE]
-        # word_img.append(calssify_letter(roi))
-        roi_list.append(cv2.resize(roi, (50, 50)))
+        roi_image = white_squared_frame(roi)  # add squared frame to the letters
+        input_image = cv2.resize(roi_image, (50, 50))  # prepare the letter image to be send to the classifier
+        word_img.append(calssify_letter(input_image))  # classify the latter
+        roi_list.append(cv2.resize(roi_image, (50, 50)))  # add the letter images to the debug list
 
     if word_img:
-        print("pass detection for now")
-        # word = np.concatenate(word_img, axis=1)
-        # cv2.imshow("classifier", word)
+        word = np.concatenate(word_img, axis=1)  # paste letters
+        cv2.imshow("classifier", word)  # show word
     else:
         print("failed")
     if roi_list:
-        roi_word = np.concatenate(roi_list, axis=1)
-        cv2.imshow("debug", roi_word)
+        roi_word = np.concatenate(roi_list, axis=1)  # paste input letters
+        cv2.imshow("debug", roi_word)  # show input word
 
 
 if __name__ == "__main__":
@@ -169,6 +198,7 @@ if __name__ == "__main__":
             img = clean_canvas()
         elif k == ord('d'):
             run_classifier(img)
+            img = clean_canvas()
         elif k == ord('w'):
             get_letters_from_words(img)
             img = clean_canvas()
