@@ -15,11 +15,14 @@ In the demo you will need to write a letter from the hebrew handwriting alphabet
 | Key  | Action |
 | ------------- | ------------- |
 | b | Clear the canvas inorder to draw something new  |
-| d | detect the letter in the canvas  |
-| r | erase mode | 
+| d | Detect the letter in the canvas  |
+| r | Erase mode | 
+| w | Detect a word |
 
 
 ![](doc/demo.gif)
+
+![](doc/word_demo.gif)
 
 ## Installation
 Install using Anaconda:
@@ -27,11 +30,11 @@ Install using Anaconda:
 ```
 conda env create -f environment.yml
 conda activate hhd
-python3 painting_demo.py # or writing_game.py
+python3 word_demo.py # or writing_game.py
 ```
 
-Install using pip
+Install using pip:
 ```
 pip3 install -r rquirements.txt
-python3 painting_demo.py # or writing_game.py
+python3 word_demo.py # or writing_game.py
 ```
